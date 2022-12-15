@@ -7,17 +7,30 @@ output: html_document
 
 
 ```{r}
-# dataset = , variable chosen = using depression t score 
-df <- read.delim("abcd_cbcls01.txt", header = TRUE)  %>% 
-  subset(select = c('subjectkey', 'eventname', 'cbcl_scr_dsm5_depress_t'))
 
-colnames(df) <- c("ID","time","y")
+
+
+#anxiety_depression variable
+
+#raw
+
+
+library(tidyverse)
+
+# dataset = , variable chosen = using depression raw scores 
+df <- read.delim("abcd_cbcls01.txt", header = TRUE)  %>% 
+  subset(select = c('subjectkey', 'eventname', 'cbcl_scr_dsm5_depress_r', 'interview_age'))
+
+colnames(df) <- c("ID","time","y", "age" )
 
 df = df[-1,]  #dropping first row 
 
 df$ID <- as.numeric(factor(df$ID, 
                   levels=unique(df$ID)))
 
+
+df$age <- as.numeric(df$age)/12  #converting to years
+  
 df["time"][df["time"] == "baseline_year_1_arm_1"] <- "0"
 df["time"][df["time"] == "1_year_follow_up_y_arm_1"] <- "1"
 df["time"][df["time"] == "2_year_follow_up_y_arm_1"] <- "2"
@@ -31,78 +44,6 @@ df[ , i] <- apply(df[ , i], 2,            # Specify own function within apply
 df
 ```
 
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-"LCGA with lcmm"
-
-library(lcmm)
-
-# set seed to reproduce:
-set.seed(2002)
-
-# run models with 1-4 classes, each with 100 random starts (to avoid local max),
-# using the 1-class model to set initial start values:
-#y~time defines growth model
-#repeated measures for one subject nested in "ID"
-lcga1 <- hlme(y ~ time, subject = "ID", ng = 1, data = df)
-lcga2 <- gridsearch(rep = 20, maxiter = 10, minit = lcga1, hlme(y ~ time, 
-                    subject = "ID", ng = 2, data = df, mixture = ~ time))
-lcga3 <- gridsearch(rep = 20, maxiter = 10, minit = lcga1, hlme(y ~ time, 
-                    subject = "ID", ng = 3, data = df, mixture = ~ time))
-lcga4 <- gridsearch(rep = 20, maxiter = 10, minit = lcga1, hlme(y ~ time, 
-                    subject = "ID", ng = 4, data = df, mixture = ~ time))
-lcga5 <- gridsearch(rep = 20, maxiter = 10, minit = lcga1, hlme(y ~ time, 
-                    subject = "ID", ng = 5, data = df, mixture = ~ time))
-
-summarytable(lcga1, lcga2, lcga3, lcga4, lcga5)
-```
-
-
-```{r}
-"GMM-1 with lcmm, random intercepts only"
-set.seed(2002)
-
-gmm1 <- hlme(y ~ time, subject = "ID", random=~1, ng = 1, data = df)
-
-gmm2 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1, hlme(y ~ time, subject = "ID", random=~1,
-ng = 2, data = df, mixture = ~ time, nwg=T))
-
-gmm3 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1, hlme(y ~ time, subject = "ID", random=~1,
-ng = 3, data = df, mixture = ~ time, nwg=T))
-
-gmm4 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1, hlme(y ~ time, subject = "ID", random=~1,
-ng = 4, data = df, mixture = ~ time, nwg=T))
-
-
-# make table with results for the 4 models:
-summarytable(gmm1, gmm2, gmm3, gmm4)
-```
-
-
-```{r}
-
-"GMM-2 intercepts and slopes - class specific"
-
-
-set.seed(2002)
-
-gmm1_2 <- hlme(y ~ time, subject = "ID", random=~1 + time, ng = 1, data =df)
-gmm2_2 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1_2, hlme(y ~ time, 
-                subject = "ID", random=~1 + time, ng = 2, data = df, mixture = ~ time, nwg=T))
-gmm3_2 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1_2, hlme(y ~ time, 
-                subject = "ID", random=~1+time, ng = 3, data = df, mixture = ~ time, nwg=T))
-
-
-gmm4_2 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1_2, hlme(y ~ time, 
-                subject = "ID", random=~1+time, ng = 4, data = df, mixture = ~ time, nwg=T))
-
-# make table with results for the 4 models:
-summarytable(gmm1_2, gmm2_2, gmm3_2, gmm4_2)
-
-```
 
 ```{r}
 "inspecting missing data"
@@ -131,10 +72,10 @@ completed_df <- complete(imputed_df,1)
 xyplot(imputed_df,y ~ ID+time,pch=18,cex=1)
 
 ```
+
 ```{r}
 densityplot(imputed_df)
 stripplot(imputed_df, pch = 20, cex = 1.2)
-
 ```
 
 ```{r}
@@ -145,20 +86,17 @@ summary(pool(modelFit1))
 
 ```{r}
 #completed df = added imputed to og df
-
 #mfinds class enumeration, build ML models using that number of classes, before that need to select features 
-"rerun lcga with imputed"
-
+"LCGA with imputed data"
 
 set.seed(2002)
 
-
 lcga1 <- hlme(y ~ time, subject = "ID", ng = 1, data = completed_df)
-lcga2 <- gridsearch(rep = 20, maxiter = 10, minit = lcga1, hlme(y ~ time, 
+lcga2 <- gridsearch(rep = 15, maxiter = 10, minit = lcga1, hlme(y ~ time, 
                     subject = "ID", ng = 2, data = completed_df, mixture = ~ time))
-lcga3 <- gridsearch(rep = 20, maxiter = 10, minit = lcga1, hlme(y ~ time, 
+lcga3 <- gridsearch(rep = 15, maxiter = 10, minit = lcga1, hlme(y ~ time, 
                     subject = "ID", ng = 3, data = completed_df, mixture = ~ time))
-lcga4 <- gridsearch(rep = 20, maxiter = 10, minit = lcga1, hlme(y ~ time, 
+lcga4 <- gridsearch(rep = 15, maxiter = 10, minit = lcga1, hlme(y ~ time, 
                     subject = "ID", ng = 4, data = completed_df, mixture = ~ time))
 
 summarytable(lcga1, lcga2, lcga3, lcga4)
@@ -166,6 +104,45 @@ summarytable(lcga1, lcga2, lcga3, lcga4)
 #address class imbalance with SMOTE
 
 ```
+
+```{r}
+#completed df = added imputed to og df
+#mfinds class enumeration, build ML models using that number of classes, before that need to select features 
+"LCGA with imputed data"
+
+set.seed(2002)
+
+lcga1 <- hlme(y ~ time, subject = "ID", ng = 1, data = completed_df)
+lcga5 <- gridsearch(rep = 15, maxiter = 10, minit = lcga1, hlme(y ~ time, 
+                    subject = "ID", ng = 5, data = completed_df, mixture = ~ time))
+
+summarytable(lcga1, lcga5)
+
+#address class imbalance with SMOTE
+
+```
+
+
+```{r}
+"GMM-2 intercepts and slopes - class specific"
+
+
+set.seed(2002)
+
+gmm1_2 <- hlme(y ~ time, subject = "ID", random=~1 + time, ng = 1, data = completed_df)
+gmm2_2 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1_2, hlme(y ~ time, 
+                subject = "ID", random=~1 + time, ng = 2, data = completed_df, mixture = ~ time, nwg=T))
+gmm3_2 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1_2, hlme(y ~ time, 
+                subject = "ID", random=~1+time, ng = 3, data = completed_df, mixture = ~ time, nwg=T))
+
+
+gmm4_2 <- gridsearch(rep = 20, maxiter = 10, minit = gmm1_2, hlme(y ~ time, 
+                subject = "ID", random=~1+time, ng = 4, data = completed_df, mixture = ~ time, nwg=T))
+
+# make table with results for the 4 models:
+summarytable(gmm1_2, gmm2_2, gmm3_2, gmm4_2)
+```
+
 
 
 
@@ -178,13 +155,44 @@ create new column with class assignment"
 
 "lcga has column for class already"
 
-a = lcga3$pprob$ID
-b = lcga3$pprob$class
+ID = array(lcga4$pprob$ID)
+class = array(lcga4$pprob$class)
 
-merge(a,b)
+new_df = data_frame(ID,class)
 
+#when ID in df = ID in new_df, add new column value of class
+```
+
+
+```{r}
+
+#new df with imputed values and classes labelled by their ID from lcga anlaysis
+#should be no missing values
+labelled_data <- merge(completed_df, new_df, by = "ID")
+summary(labelled_data)
+```
+
+
+
+```{r}
+
+library(ggplot2)
+
+ggplot(labelled_data, aes(x=age, y=y, color=as.factor(class))) +
+  geom_point(alpha=0.1) + geom_smooth() + labs(color='Latent class', x="age (years)", y='Depression t-score') +
+  scale_color_brewer(palette="Dark2") 
 
 ```
+
+```{r}
+#perform multinomial logistic regression, stratify by sex 
+
+ggplot(labelled_data, aes(x=time, y=y, color=as.factor(class))) +
+  geom_point() +  labs(color='Latent class', x="Time since baseline", y='Depression t-score') +
+  scale_color_brewer(palette="Dark2") 
+
+```
+
 
 
 
