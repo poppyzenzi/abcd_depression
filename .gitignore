@@ -1,0 +1,4 @@
+#files to ignore
+
+/mplus_data/dataframes
+ls.questionnaires.csv
