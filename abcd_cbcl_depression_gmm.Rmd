@@ -70,6 +70,11 @@ df <- transform(df, time = as.numeric(time),
                 mutate(`sex` = dplyr::recode(`sex`,
                                             `M`="0",
                                             `F`="1")) 
+
+#save to use in script for plotting mplus trajectories
+#should be saved in gmm_abcd
+write_rds(df, file = 'abcd_cbcl_long.rds')
+
 ```
 
 
@@ -84,7 +89,7 @@ dfwide <- df %>%
                   times = c("0","1","2","3"), 
                   direction = "wide") %>%
   #replace NA with numeric value for mplus that doesnt match any other
-  replace(., is.na(dfwide), -9999) 
+  replace(., is.na(.), -9999) 
 
 
 setwd('/Users/poppygrimes/Library/CloudStorage/OneDrive-UniversityofEdinburgh/Edinburgh/gmm/gmm_abcd/mplus_data')
