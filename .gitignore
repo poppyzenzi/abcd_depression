@@ -2,3 +2,10 @@
 
 /mplus_data/dataframes
 ls.questionnaires.csv
+
+abcd_cbcl_long.txt
+abcd_cbcl_long.rds
+mplus_data/abcd_cbcl_wide.txt
+mplus_data/lcga_abcd_quadratic.out
+
+
