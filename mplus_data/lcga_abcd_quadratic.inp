@@ -3,14 +3,15 @@ Latent class growth analysis for
 wide format abcd depression data;
 
 DATA:
-    FILE IS abcd_cbcl_wide.txt;
+    FILE IS abcd_cbcl_wide_python.txt;
 
 VARIABLE:
-      names are id y3 age3 y2 age2 y1 age1 y0 age0;
+
+      names are id y0 y1 y2 y3;
       usevariables are y0 y1 y2 y3;
-      missing are all (99.00000);
-      auxiliary id;
-      classes = c (4);
+      missing are all (-9999);
+      idvariable is id;
+      classes = c (3);
 
 ANALYSIS: 
 	processors = 4 (starts);
@@ -19,14 +20,13 @@ ANALYSIS:
 	!stiterations = 25;
 	!stscale = 25;
 
-
 MODEL:
     %overall%
     i by y0@1 y1@1 y2@1 y3@1;
-
-    s by y0@0 y1@1 y2@2 y3@3;
-
-    q by y0@0 y1@1 y2@4 y3@9;
+   
+    s by y0@0 y1@0.101 y2@0.209 y3@0.298;
+    
+    q by y0@0 y1@0.01 y2@0.044 y3@0.089;
     
     [y0@0 y1@0 y2@0 y3@0];
     
@@ -45,12 +45,10 @@ MODEL:
     
     %c#3% 
     [i s q]; 
-    
-    %c#4% 
-    [i s q]; 
-    
- 
    
+    
+    
+    
 OUTPUT: 
 tech1 tech4 tech11;
 
@@ -60,5 +58,5 @@ type is plot3;
   series = y0 y1 y2 y3 (s);
 
 
-SAVEDATA: file is 4_class_probs.txt;
+SAVEDATA: file is 3_class_probs_abcd.txt;
    save = cprobabilities;

@@ -41,35 +41,27 @@ setwd("/Users/poppygrimes/Library/CloudStorage/OneDrive-UniversityofEdinburgh/Ed
 
 #read in from datastore using following
 #select relevant variables, here using raw CBCL score
-df <- read_rds('/Volumes/igmm/GenScotDepression/data/abcd/release4.0/iii.data/Mental_Health/abcd_cbcls01.rds') %>% 
-  subset(select = c('src_subject_id', 'eventname', 'cbcl_scr_dsm5_depress_r', 'interview_age', 'sex'))
+#will need to change when 5.0 available
+df <- read_rds('/Volumes/igmm/GenScotDepression/data/abcd/release4.0/iii.data/Mental_Health/abcd_cbcls01.rds')
 
-colnames(df) <- c("id","time","dep", "age", "sex")
-
-
-df$id <- as.numeric(factor(df$id, 
-                  levels=unique(df$id)))
-
-df$age <- as.numeric(df$age)/12  #converting to years
+df <- df %>% subset(select = c('src_subject_id', 'eventname', 
+                         'cbcl_scr_dsm5_depress_r', 'interview_age', 'sex')) %>%
+  set_colnames(c("id","time","dep", "age", "sex")) %>%
+  mutate(`time` = dplyr::recode(`time`,
+                                `baseline_year_1_arm_1`="0",
+                                `1_year_follow_up_y_arm_1`="1",
+                                `2_year_follow_up_y_arm_1`="2",
+                                `3_year_follow_up_y_arm_1`="3",
+                                #`4_year_follow_up_y_arm_1`="4" [when 5.0 release is available]
+                                ))  %>%
+  transform(id = as.numeric(factor(id, levels=unique(id))), #unique numeric id
+            age = as.numeric(age)/12, #convert age to years
+            time = as.numeric(time), 
+             dep = as.numeric(dep)) %>%
+    mutate(`sex` = dplyr::recode(`sex`, #recode sex to binary
+                                 `M`="0",
+                                 `F`="1")) 
   
-df["time"][df["time"] == "baseline_year_1_arm_1"] <- "0"
-df["time"][df["time"] == "1_year_follow_up_y_arm_1"] <- "1"
-df["time"][df["time"] == "2_year_follow_up_y_arm_1"] <- "2"
-df["time"][df["time"] == "3_year_follow_up_y_arm_1"] <- "3"
-
-#transform(df, time = as.numeric(time), y = as.numeric(y))
-
-i <- c(2,3)
-df[ , i] <- apply(df[ , i], 2,            # Specify own function within apply
-                    function(x) as.numeric(as.character(x)))
-
-
-#make time and dep scores numeric and recode sex to binary 
-df <- transform(df, time = as.numeric(time), 
-                dep = as.numeric(dep)) %>%
-                mutate(`sex` = dplyr::recode(`sex`,
-                                            `M`="0",
-                                            `F`="1")) 
 
 #save to use in script for plotting mplus trajectories
 #should be saved in gmm_abcd
@@ -80,15 +72,17 @@ write_rds(df, file = 'abcd_cbcl_long.rds')
 
 ```{r}
 #converting dataframe to wide for MPlus input
-
 #remove sex and age cols
 dfwide <- df %>%
           subset(select = -c(4,5)) %>%
   reshape(., idvar = "id", 
                   timevar = "time", 
-                  times = c("0","1","2","3"), 
+                  times = c("0","1","2","3",
+                            #"4" next release
+                            ), 
                   direction = "wide") %>%
   #replace NA with numeric value for mplus that doesnt match any other
+  #only in mplus df not saved rds
   replace(., is.na(.), -9999) 
 
 

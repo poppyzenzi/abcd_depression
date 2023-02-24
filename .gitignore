@@ -1,7 +1,12 @@
 #files to ignore
 
-/mplus_data/dataframes
+/mplus_data/
 ls.questionnaires.csv
+
+
+abcd_predictors.Rmd
+
+
 
 abcd_cbcl_long.txt
 abcd_cbcl_long.rds
