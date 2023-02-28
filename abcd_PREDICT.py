@@ -16,6 +16,8 @@ from pathlib import Path
 import random
 import glob
 from functools import reduce
+import os.path
+from os import path
 
 # ============= WIP script for ML prediction models in ABCD =================
 
@@ -34,21 +36,22 @@ abcd_4k = abcd_4k[['id','class']] #subsetting
 abcd_4k.replace('*', np.nan) #replace missing
 
 # class data has unique id's only > merge with anth to align NDAR id's
-from abcd_PREP import get_dataframe
-df = get_dataframe()
+os.chdir('/Users/poppygrimes/Library/CloudStorage/OneDrive-UniversityofEdinburgh/Edinburgh/gmm/gmm_abcd')
 
-abcd_4k = pd.merge(abcd_4k, df, on='id')
+from abcd_PREP import get_dataframes
+df1, df2 = get_dataframes()
+
+abcd_4k = pd.merge(abcd_4k, df1, on='id')
 
 # ================================VARIABLES=====================================
-
 # make df with all vars, clean all vars (X), append class col (Y)
-# one binary frame and one continuous. continuous scale between 0 and 1?
-data = abcd_4k
 
+data = abcd_4k
+print(data) # this should include mapped numeric and og id's and class enumeration
 data = data.rename(columns={'og_id': 'src_subject_id', 'sex': 'SEX', 'time': 'eventname'})
 
+# change to var storage area
 os.chdir('/Volumes/igmm/GenScotDepression/data/abcd/release4.0/iii.data/')
-
 # all files containing VOIs
 rds = ['fhxp102.rds','dibf01.rds','abcd_mhp02.rds','abcd_cbcls01.rds','abcd_asrs01.rds', 'abcd_ypdms01.rds',
        'abcd_ppdms01.rds', 'abcd_yssbpm01.rds', 'abcd_ssphp01.rds','abcd_sds01.rds', 'stq01.rds', 'abcd_sscep01.rds',
@@ -66,11 +69,10 @@ for root, dirs, files in os.walk(".", topdown=False):
           datasets.append(df)
           count = count + 1
 
-# extract VOIs
+# extract VOIs: binary, continuous, demographic
 b_vars = ['kbi_p_c_bully','fam_history_q6d_depression','fam_history_q6a_depression','famhx_4_p', 'menstrualcycle4_y',
           'menstrualcycle4_p', 'fes_youth_q6','fes_youth_q1', 'famhx_ss_moth_prob_alc_p', 'famhx_ss_fath_prob_alc_p',
-          'ksads_21_921_p', 'ksads_21_922_p' ]  # binary vars
-
+          'ksads_21_921_p', 'ksads_21_922_p']
 c_vars = ['screentime_1_wknd_hrs_p', 'fes_p_ss_fc', 'fes_p_ss_fc_pr', 'macv_p_ss_fs', 'macv_p_ss_fo', 'macv_p_ss_isr',
           'psb_p_ss_mean', 'asr_scr_depress_r', 'asr_scr_anxdep_r', 'peq_ss_overt_victim', 'cbcl_scr_dsm5_anxdisord_r','sds_p_ss_total']
 dem_vars = ['src_subject_id','class','eventname','age','SEX']
@@ -104,45 +106,43 @@ grouped = df.groupby(['eventname', 'class'])['class'].count().unstack(fill_value
 result = grouped.astype(int) # shows 2 NaNs at event 0 that were excluded in mplus
 print(result)
 
-
-df = df[all_vars] # select only vars we want
-
+# select only vars we want
+df = df[all_vars]
 # now recode all binary variables so they are restricted to [0,1,NaN]
 df[b_vars] = df[b_vars].replace({'yes': 1, 'no': 0})
 df[b_vars] = df[b_vars].mask(~df[b_vars].isin([0,1]))
-
 # now to normalise c_vars in range [0,1] or NaN
 df[c_vars] = df[c_vars].astype(float)
 df[c_vars] = (df[c_vars] - df[c_vars].min()) / (df[c_vars].max() - df[c_vars].min())
 
 # check if features are between 0 and 1 or NaN
 for feature in features:
-    if df[feature].dropna().between(0, 1).all():
+    if df[feature].dropna().cat.as_ordered().between(0, 1).all():
         pass
     else:
         print(f"Some non-NaN values in {feature} are not between 0 and 1.")
 
 # vars ready
+# will also want to append columns with polygenic risk scores once finalised
 
-# will also want to append columns with polygenic scores once made
-
-# ======================= here you would impute missing values ================
+# ==================== impute missing values ================
+# once all vars are selected
 # options are mean or median (same column) or KNNn (based on values of similar rows)
 
 
-# mulitnom logistic regression
+# ================= Classification models ==================
 # Separate input and target variables, split
 X = df.drop(['class', 'src_subject_id','class','eventname','age'], axis=1)
-
 y = df['class']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# multinomial LR
 logreg = LogisticRegression(multi_class='multinomial', solver='lbfgs')
 logreg.fit(X_train, y_train)
 y_pred = logreg.predict(X_test)
 # Calculate the accuracy of the model
 accuracy = accuracy_score(y_test, y_pred)
 print('Accuracy: {:.2f}'.format(accuracy))
-
 r_sq = clf.score(x, y)
 print('coefficient of determination:', r_sq)
 y_pred = clf.predict(x)

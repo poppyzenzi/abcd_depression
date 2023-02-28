@@ -55,6 +55,11 @@ df['og_id'].nunique() # check 11,876. Should be same but we merge with anth to b
 # merging into long format df
 data = pd.merge(anth, df, on=["og_id","time"])
 
+def get_dataframes(): # to import to other scripts
+    df1 = anth
+    df2 = data
+    return df1, df2
+
 # ==========now convert data to wide for mplus=============
 # first keep only relevant cols
 data = data[['id','time','dep']]

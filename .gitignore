@@ -3,6 +3,8 @@
 /mplus_data/
 ls.questionnaires.csv
 
+.RDataTmp
+.RHistory
 
 abcd_predictors.Rmd
 
