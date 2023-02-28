@@ -17,77 +17,35 @@ import random
 import glob
 from functools import reduce
 
+# ============= WIP script for ML prediction models in ABCD =================
 
-#first use anthropomorphic data to assign unique numeric ID's
-anth = pyreadr.read_r('/Volumes/igmm/GenScotDepression/data/abcd/release4.0/iii.data/Physical_Health/abcd_ant01.rds')
-anth = anth[None] # let's check what objects we have: there is only None
-anth = anth[['src_subject_id','eventname', 'interview_age', 'sex']]
-anth.columns = ['id','time','age','sex']
-anth['time'] = anth['time'].replace(['baseline_year_1_arm_1','1_year_follow_up_y_arm_1',
-                                 '2_year_follow_up_y_arm_1','3_year_follow_up_y_arm_1'],
-                                [0,1,2,3])
-anth['sex'] = anth['sex'].replace(['F','M'], [1,0])
-anth['age'] = anth['age'].div(12)
-anth['id'].nunique() # check 11,876
-anth['og_id'] = anth.loc[:, 'id'] # keep old id
-
-original_ids = anth['id'].unique()
-
-random.seed(1)
-while True:
-    new_ids = {id_: random.randint(10_000_00, 99_999_999) for id_ in original_ids}  # 8 digit unique numeric id
-    if len(set(new_ids.values())) == len(original_ids):
-        # all the generated id's were unique
-        break
-    # otherwise this will repeat until they are
-anth['id'] = anth['id'].map(new_ids)
-anth['id'].nunique() # check 11,876
-
-# original and new id's are now ready to merge [check seed is working]
-
-# =============CBCL data===============
-df = pyreadr.read_r('/Volumes/igmm/GenScotDepression/data/abcd/release4.0/iii.data/Mental_Health/abcd_cbcls01.rds')
-df = df[None]
-df = df[['src_subject_id','eventname','cbcl_scr_dsm5_depress_r']]
-df.columns = ['og_id','time','dep']
-df['time'] = df['time'].replace(['baseline_year_1_arm_1', '1_year_follow_up_y_arm_1',
-                                     '2_year_follow_up_y_arm_1', '3_year_follow_up_y_arm_1'],
-                                    [0, 1, 2, 3])
-df['og_id'].nunique() # check 11,876. Should be same but we merge with anth to be certain
-
-# merging into long format df
-data = pd.merge(anth, df, on=["og_id","time"])
-
-# ==========now convert data to wide for mplus=============
-# first keep only relevant cols
-data = data[['id','time','dep']]
-data_wide = pd.pivot(data, index=['id'], columns='time', values='dep') #  11,876 rows
-data_wide[[0,1,2,3]] = data_wide[[0,1,2,3]].fillna('-9999') # replace NaNs with -9999 for mplus
-filepath = Path('/Users/poppygrimes/Library/CloudStorage/OneDrive-UniversityofEdinburgh/Edinburgh/gmm/gmm_abcd/mplus_data/abcd_cbcl_wide_python.txt')
-filepath.parent.mkdir(parents=True, exist_ok=True)
-data_wide.to_csv(filepath, header=False, sep='\t')  # save wide data for mplus, make sure tab separated
-
-# =================================================
-# make new df with id, unique id, Xvars and yclass
+# first input class data from mplus output > merge with original NDAR IDs
+# read in, select, clean and normalise all variables [0,1]
+# build design matrix
+# impute missing data
+# split test and train > run ML models
+# evaluate feature importance
 
 # class data
 abcd_4k = pd.read_table('/Users/poppygrimes/Library/CloudStorage/OneDrive-UniversityofEdinburgh/'
                         'Edinburgh/gmm/gmm_abcd/mplus_data/4_class_probs_abcd_py.txt', delim_whitespace=True, header=None)
-abcd_4k.columns = ['y0','y1','y2','y3','v1','v2','v3','v4','v5','v6','v7','v8','v9','v10','class','id'] #assigning col names
+abcd_4k.columns = ['y0','y1','y2','y3','v1','v2','v3','v4','v5','v6','v7','v8','v9','v10','class','id']
 abcd_4k = abcd_4k[['id','class']] #subsetting
 abcd_4k.replace('*', np.nan) #replace missing
 
-# class data will have unique id's 'id' only
-# anth has id and og_id, merge class data with this so we have og ids aligned
-abcd_4k = pd.merge(abcd_4k, anth, on='id')
+# class data has unique id's only > merge with anth to align NDAR id's
+from abcd_PREP import get_dataframe
+df = get_dataframe()
+
+abcd_4k = pd.merge(abcd_4k, df, on='id')
 
 # ================================VARIABLES=====================================
 
 # make df with all vars, clean all vars (X), append class col (Y)
 # one binary frame and one continuous. continuous scale between 0 and 1?
+data = abcd_4k
 
-data = pd.merge(anth, abcd_4k, on='id') #anth contains sex, this acts as df to build on
-data  = data.rename(columns={'og_id': 'src_subject_id', 'sex': 'SEX', 'time': 'eventname'})
+data = data.rename(columns={'og_id': 'src_subject_id', 'sex': 'SEX', 'time': 'eventname'})
 
 os.chdir('/Volumes/igmm/GenScotDepression/data/abcd/release4.0/iii.data/')
 
@@ -126,7 +84,7 @@ for df in datasets:
     df.drop(['interview_date','interview_age','sex'], axis=1, inplace=True, errors='ignore')
     df['eventname'] = df['eventname'].replace(['baseline_year_1_arm_1', '6_month_follow_up_arm_1', '1_year_follow_up_y_arm_1',
                                                '18_month_follow_up_arm_1', '2_year_follow_up_y_arm_1', '30_month_follow_up_arm_1',
-                                               '3_year_follow_up_y_arm_1'], [0, 0.5, 1, 1.5, 2, 2.5, 3])
+                                               '3_year_follow_up_y_arm_1'], [0, 0.5, 1, 1.5, 2, 2.5, 3],)
     df['eventname']=df['eventname'].astype(float) # all floats for merging
     df['src_subject_id']=df['src_subject_id'].astype(object) # all objects for merging
 
@@ -164,12 +122,12 @@ for feature in features:
     else:
         print(f"Some non-NaN values in {feature} are not between 0 and 1.")
 
-# now all variables are ready
+# vars ready
 
 # will also want to append columns with polygenic scores once made
 
 # ======================= here you would impute missing values ================
-# some options are mean or median (same column) or KNNn (based on values of similar rows)
+# options are mean or median (same column) or KNNn (based on values of similar rows)
 
 
 # mulitnom logistic regression
@@ -185,18 +143,6 @@ y_pred = logreg.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 print('Accuracy: {:.2f}'.format(accuracy))
 
-
-
-
-# ---- test mn lr ===
-
-test = binary.dropna(subset=['fam_history_q6d_depression','class']) # 6098 observations at baseline ( eventname = 0 )
-x = np.array(test['fam_history_q6d_depression']).reshape(-1,1)
-y = np.array(test['class'])
-
-clf = LogisticRegression(solver='lbfgs', multi_class='multinomial')
-clf.fit(x,y)
-
 r_sq = clf.score(x, y)
 print('coefficient of determination:', r_sq)
 y_pred = clf.predict(x)
@@ -205,6 +151,4 @@ OR = np.exp(clf.coef_)
 print('odds ratio', OR)
 clf.coef_
 clf.classes_
-
-# continuous variables need to be normalised, then concat c_vars by dem_vars
 
