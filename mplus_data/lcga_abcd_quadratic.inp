@@ -11,7 +11,7 @@ VARIABLE:
       usevariables are y0 y1 y2 y3;
       missing are all (-9999);
       idvariable is id;
-      classes = c (3);
+      classes = c (4);
 
 ANALYSIS: 
 	processors = 4 (starts);
@@ -45,6 +45,9 @@ MODEL:
     
     %c#3% 
     [i s q]; 
+    
+    %c#4% 
+    [i s q]; 
    
     
     
@@ -58,5 +61,5 @@ type is plot3;
   series = y0 y1 y2 y3 (s);
 
 
-SAVEDATA: file is 3_class_probs_abcd.txt;
+SAVEDATA: file is 4k_probs_abcd_cbcl.txt;
    save = cprobabilities;

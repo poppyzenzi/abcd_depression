@@ -34,15 +34,10 @@ while True:
 anth['id'] = anth['id'].map(new_ids)
 anth['id'].nunique() # check 11,876
 
-# func to import df to next script
-def get_dataframe():
-    df = anth
-    return df
-
 # to ensure seed it working, check mplus output ids with ascending anth ids
 anth.sort_values(by=['id'])
 
-# =============  CBCL data  ===============
+# ============================  CBCL data  =============================
 df = pyreadr.read_r('/Volumes/igmm/GenScotDepression/data/abcd/release4.0/iii.data/Mental_Health/abcd_cbcls01.rds')
 df = df[None]
 df = df[['src_subject_id','eventname','cbcl_scr_dsm5_depress_r']]
@@ -55,10 +50,15 @@ df['og_id'].nunique() # check 11,876. Should be same but we merge with anth to b
 # merging into long format df
 data = pd.merge(anth, df, on=["og_id","time"])
 
-def get_dataframes(): # to import to other scripts
-    df1 = anth
-    df2 = data
+def get_dataframes(): # to import to other scripts - doesn't work from console
+    df1 = anth # [id, time, age, sex, NDAR id]
+    df2 = data # [id, time, age, sex, NDAR id, cbcl score]
     return df1, df2
+
+
+# saving for local use
+anth.to_csv("/Volumes/igmm/GenScotDepression/users/poppy/abcd/abcd_anth.csv", index=False)
+data.to_csv("/Volumes/igmm/GenScotDepression/users/poppy/abcd/abcd_cbcl.csv", index=False)
 
 # ==========now convert data to wide for mplus=============
 # first keep only relevant cols
